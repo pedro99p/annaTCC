@@ -1,10 +1,8 @@
 # AnnaTCC
 
-[![Build Status](https://travis-ci.com/hydro-project/anna.svg?branch=master)](https://travis-ci.com/hydro-project/anna)
-[![codecov](https://codecov.io/gh/hydro-project/anna/branch/master/graph/badge.svg)](https://codecov.io/gh/hydro-project/anna)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-Anna is a low-latency, autoscaling key-value store developed in the [RISE Lab](https://rise.cs.berkeley.edu) at [UC Berkeley](https://berkeley.edu). 
+AnnaTCC from FaaSTCC is based on Anna, a low-latency, autoscaling key-value store developed in the [RISE Lab](https://rise.cs.berkeley.edu) at [UC Berkeley](https://berkeley.edu). 
 
 ## Design
 
@@ -20,4 +18,4 @@ More detailed instructions on [building](docs/building-anna.md) and [running](do
 
 ## License
 
-The Hydro Project is licensed under the [Apache v2 License](LICENSE).
+FaaSTCC is licensed under the [Apache v2 License](LICENSE).
