@@ -18,4 +18,4 @@ More detailed instructions on [building](docs/building-anna.md) and [running](do
 
 ## License
 
-The Hydro Project is licensed under the [Apache v2 License](LICENSE).
+FaaSTCC is licensed under the [Apache v2 License](LICENSE).
