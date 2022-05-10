@@ -13,7 +13,7 @@
 #  limitations under the License.
 #  Modifications copyright (C) 2021 Taras Lykhenko, Rafael Soares
 
-FROM taraslykhenko/base:latest
+FROM pedro99p/faastcc_base:latest
 
 ARG repo_org=TarasLykhenko
 ARG source_branch=main
