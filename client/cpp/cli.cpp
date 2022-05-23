@@ -423,16 +423,16 @@ int main(int argc, char *argv[]) {
     std::cerr << "Threads: " << threads[3].ip() << "\n";*/
 
 
-    KvsClient client(threads, ip, 0, 10000);
 
+    KvsClient client(threads, ip, 0, 10000);
     Key key = "HELLO";
     LWWPairLattice<string> val(
             TimestampValuePair<string>(generate_timestamp(0), "THERE"));
 
-    string rid = client->put_async(key, serialize(val), LatticeType::LWW);
-    vector<KeyResponse> responses = client->receive_async();
+    string rid = &client->put_async(key, serialize(val), LatticeType::LWW);
+    vector<KeyResponse> responses = &client->receive_async();
     while (responses.size() == 0) {
-        responses = client->receive_async();
+        responses = &client->receive_async();
     }
 
     KeyResponse response = responses[0];
