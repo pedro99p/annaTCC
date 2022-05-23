@@ -425,9 +425,25 @@ int main(int argc, char *argv[]) {
 
     KvsClient client(threads, ip, 0, 10000);
 
-    if (argc == 2) {
+    Key key = "HELLO";
+    LWWPairLattice<string> val(
+            TimestampValuePair<string>(generate_timestamp(0), "THERE"));
+
+    string rid = client->put_async(key, serialize(val), LatticeType::LWW);
+    vector<KeyResponse> responses = client->receive_async();
+    while (responses.size() == 0) {
+        responses = client->receive_async();
+    }
+
+    KeyResponse response = responses[0];
+
+    std::cout << "Error Code: " << response.error() << "\n";
+
+
+
+    /*if (argc == 2) {
         run(&client);
     } else {
         run(&client, argv[2]);
-    }
+    }*/
 }
