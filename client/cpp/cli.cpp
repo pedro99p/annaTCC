@@ -269,6 +269,9 @@ void handle_request(KvsClientInterface *client, string input) {
 
         KeyResponse response = responses[0];
 
+        std::cout << "asd: " << response.error() << "\n";
+
+
         if (response.response_id() != rid) {
             std::cout << "Invalid response: ID did not match request ID!"
                       << std::endl;
@@ -392,6 +395,7 @@ int main(int argc, char *argv[]) {
 
     YAML::Node user = conf["user"];
     Address ip = user["ip"].as<Address>();
+    std::cerr << "IP: " << ip << "\n";
 
     vector<Address> routing_ips;
     if (YAML::Node elb = user["routing-elb"]) {
@@ -403,12 +407,21 @@ int main(int argc, char *argv[]) {
         }
     }
 
+    std::cerr << "Routing IPs: " << routing_ips[0] << "\n";
+
+
     vector<UserRoutingThread> threads;
     for (Address addr : routing_ips) {
         for (unsigned i = 0; i < kRoutingThreadCount; i++) {
             threads.push_back(UserRoutingThread(addr, i));
         }
     }
+
+    /*std::cerr << "Threads: " << threads[0].ip() << "\n";
+    std::cerr << "Threads: " << threads[1].ip() << "\n";
+    std::cerr << "Threads: " << threads[2].ip() << "\n";
+    std::cerr << "Threads: " << threads[3].ip() << "\n";*/
+
 
     KvsClient client(threads, ip, 0, 10000);
 
