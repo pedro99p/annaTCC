@@ -12,6 +12,7 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  Modifications copyright (C) 2021 Taras Lykhenko, Rafael Soares
+
 #include "kvs/kvs_handlers.hpp"
 
 void send_gossip(AddressKeysetMap &addr_keyset_map, SocketCache &pushers,
@@ -34,7 +35,7 @@ void send_gossip(AddressKeysetMap &addr_keyset_map, SocketCache &pushers,
       }
 
 
-      auto res = process_get(key, serializers[type],-1,t_high);
+      auto res = process_get(key, serializers[type],0,t_high);
 
       if (res.second == 0) {
         prepare_put_tuple(gossip_map[address], key, type, res.first);

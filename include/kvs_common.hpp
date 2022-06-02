@@ -12,6 +12,7 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  Modifications copyright (C) 2021 Taras Lykhenko, Rafael Soares
+
 #ifndef KVS_INCLUDE_KVS_COMMON_HPP_
 #define KVS_INCLUDE_KVS_COMMON_HPP_
 
@@ -58,14 +59,8 @@ inline void prepare_put_tuple(KeyRequest &req, Key key,
                               LatticeType lattice_type, string payload) {
   KeyTuple *tp = req.add_tuples();
   tp->set_key(std::move(key));
-    if(lattice_type == LatticeType::WREN){
-        LWWPairLattice<string> lattice = deserialize_lww(payload);
-        tp->set_t_low(lattice.reveal().timestamp);
-        tp->set_t_high(lattice.reveal().promise);
-    }
   tp->set_lattice_type(std::move(lattice_type));
   tp->set_payload(std::move(payload));
-
 }
 
 #endif // KVS_INCLUDE_KVS_COMMON_HPP_

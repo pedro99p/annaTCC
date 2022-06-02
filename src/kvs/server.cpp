@@ -12,6 +12,7 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  Modifications copyright (C) 2021 Taras Lykhenko, Rafael Soares
+
 #include "kvs/kvs_handlers.hpp"
 #include "yaml-cpp/yaml.h"
 
@@ -202,7 +203,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
   Serializer *priority_serializer;
   Serializer *mk_wren_serializer;
 
-    MemoryMultiKeyWrenKVS *multi_key_wren_kvs;
+
     if (kSelfTier == Tier::MEMORY) {
     MemoryLWWKVS *lww_kvs = new MemoryLWWKVS();
     lww_serializer = new MemoryLWWSerializer(lww_kvs);
@@ -221,7 +222,8 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
     mk_causal_serializer =
         new MemoryMultiKeyCausalSerializer(multi_key_causal_kvs);
 
-    multi_key_wren_kvs = new MemoryMultiKeyWrenKVS();
+    MemoryMultiKeyWrenKVS *multi_key_wren_kvs =
+            new MemoryMultiKeyWrenKVS();
     mk_wren_serializer =
             new MemoryMultiKeyWrenSerializer(multi_key_wren_kvs);
 
@@ -311,10 +313,7 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
   auto gossip_end = std::chrono::system_clock::now();
   auto report_start = std::chrono::system_clock::now();
   auto report_end = std::chrono::system_clock::now();
-    auto heartbeat_start = std::chrono::system_clock::now();
-    auto heartbeat_end = std::chrono::system_clock::now();
-    auto warmup_start = std::chrono::system_clock::now();
-    auto warmup_end = std::chrono::system_clock::now();
+
   unsigned long long working_time = 0;
   unsigned long long working_time_map[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
   unsigned epoch = 0;
@@ -470,6 +469,26 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
                                                               gossip_start)
             .count() >= PERIOD) {
 
+      pair<unsigned long long, std::vector<Transaction>> pair_committedTransactions = th.writebackTx();
+      std::vector<Transaction> committedTransactions = pair_committedTransactions.second;
+      std::vector<Transaction>::iterator it;
+      for ( it = committedTransactions.begin(); it != committedTransactions.end(); it++ )
+      {
+        for (const auto &tuple : it->getOperations()) {
+          Key key = tuple.key();
+          string payload = tuple.payload();
+          LWWPairLattice<string> val = deserialize_lww(payload);
+          val.merge(LWWPairLattice<string>(TimestampValuePair<string>(it->getCommitTimestamp(), th.getUB(), "")));
+
+          process_put(key, tuple.lattice_type(), serialize(val),
+                      serializers[tuple.lattice_type()], stored_key_map);
+          pending_gossip_keys.insert(pair<unsigned long long, Key>{it->getCommitTimestamp(),key});
+        }
+      }
+      if(committedTransactions.size() > 0){
+        th.updateVC(pair_committedTransactions.first);
+      }
+
       auto it_ending_gossip_keys = pending_gossip_keys.upper_bound(th.getLocalVisible());
       while(it_ending_gossip_keys != pending_gossip_keys.begin()) {
         --it_ending_gossip_keys;
@@ -522,86 +541,15 @@ void run(unsigned thread_id, Address public_ip, Address private_ip,
 
       working_time += time_elapsed;
       working_time_map[9] += time_elapsed;
+      bool succeed;
+      ServerThreadList threads = kHashRingUtil->get_all_threads(
+              wt.replication_response_connect_address(),
+              global_hash_rings, local_hash_rings,
+              kAllTiers, succeed, seed);
+      if (succeed) {
+        send_heart_beat(threads, pushers, serializers, stored_key_map,th);
+      }
     }
-      warmup_end = std::chrono::system_clock::now();
-      if (std::chrono::duration_cast<std::chrono::minutes>(warmup_end -
-                                                                warmup_start)
-                  .count() >= WARMUP) {
-
-          AddressKeysetMap addr_keyset_map;
-
-          bool succeed;
-
-          auto it_ending_gossip_keys = multi_key_wren_kvs->getDB().key_set();
-          for (const Key &key : it_ending_gossip_keys.reveal()) {
-              // Get the threads that we need to gossip to.
-              ServerThreadList threads = kHashRingUtil->get_responsible_threads(
-                      wt.replication_response_connect_address(), key, is_metadata(key),
-                      global_hash_rings, local_hash_rings, key_replication_map, pushers,
-                      kAllTiers, succeed, seed);
-
-              if (succeed) {
-                  for (const ServerThread &thread : threads) {
-                      if (!(thread == wt)) {
-                          addr_keyset_map[thread.gossip_connect_address()].insert(key);
-                      }
-                  }
-              } else {
-                  log->error("Missing key replication factor in gossip routine.");
-              }
-
-              // Get the caches that we need to gossip to.
-              if (key_to_cache_ips.find(key) != key_to_cache_ips.end()) {
-                  set<Address> &cache_ips = key_to_cache_ips[key];
-                  for (const Address &cache_ip : cache_ips) {
-                      CacheThread ct(cache_ip, 0);
-                      addr_keyset_map[ct.cache_update_connect_address()].insert(key);
-                  }
-              }
-          }
-
-          send_gossip(addr_keyset_map, pushers, serializers, stored_key_map, th.getLocalVisible());
-          log->info("Time to warmup: {}", std::chrono::duration_cast<std::chrono::seconds>(warmup_start -warmup_end).count());
-          warmup_start = std::chrono::system_clock::now();
-
-      }
-
-      pair<unsigned long long, std::vector<Transaction>> pair_committedTransactions = th.writebackTx();
-      std::vector<Transaction> committedTransactions = pair_committedTransactions.second;
-      std::vector<Transaction>::iterator it;
-      for ( it = committedTransactions.begin(); it != committedTransactions.end(); it++ )
-      {
-          for (const auto &tuple : it->getOperations()) {
-              Key key = tuple.key();
-              string payload = tuple.payload();
-              LWWPairLattice<string> val = deserialize_lww(payload);
-              val.merge(LWWPairLattice<string>(TimestampValuePair<string>(it->getCommitTimestamp(), th.getUB(), "")));
-
-              process_put(key, tuple.lattice_type(), serialize(val),
-                          serializers[tuple.lattice_type()], stored_key_map);
-              pending_gossip_keys.insert(pair<unsigned long long, Key>{it->getCommitTimestamp(),key});
-          }
-      }
-      if(committedTransactions.size() > 0){
-          th.updateVC(pair_committedTransactions.first);
-      }
-
-      heartbeat_end = std::chrono::system_clock::now();
-
-      if (std::chrono::duration_cast<std::chrono::microseconds>(heartbeat_end -
-                                                                heartbeat_start)
-                  .count() >= HEARTBEAT) {
-          bool succeed;
-          ServerThreadList threads = kHashRingUtil->get_all_threads(
-                  wt.replication_response_connect_address(),
-                  global_hash_rings, local_hash_rings,
-                  kAllTiers, succeed, seed);
-          if (succeed) {
-              send_heart_beat(threads, pushers, serializers, stored_key_map, th);
-          }
-
-          heartbeat_start = std::chrono::system_clock::now();
-      }
 
     // Collect and store internal statistics,
     // fetch the most recent list of cache IPs,
