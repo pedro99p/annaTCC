@@ -380,6 +380,18 @@ void run(KvsClientInterface *client, string filename) {
     }
 }
 
+/*inline string serialize(const LWWPairLattice<string>& l) {
+    LWWValue lww_value;
+    lww_value.set_timestamp(l.reveal().timestamp); //ulonglong
+    lww_value.set_value(l.reveal().value); // string
+    lww_value.set_promise(l.reveal().promise); // ulonglong
+
+
+    string serialized;
+    lww_value.SerializeToString(&serialized);
+    return serialized;
+}*/
+
 int main(int argc, char *argv[]) {
     if (argc < 2 || argc > 3) {
         std::cerr << "Usage: " << argv[0] << " conf-file <input-file>" << std::endl;
@@ -417,33 +429,60 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    /*std::cerr << "Threads: " << threads[0].ip() << "\n";
-    std::cerr << "Threads: " << threads[1].ip() << "\n";
-    std::cerr << "Threads: " << threads[2].ip() << "\n";
-    std::cerr << "Threads: " << threads[3].ip() << "\n";*/
-
-
 
     KvsClient client(threads, ip, 0, 10000);
-    Key key = "HELLO";
-    LWWPairLattice<string> val(
-            TimestampValuePair<string>(generate_timestamp(0), "THERE"));
 
-    string rid = &client->put_async(key, serialize(val), LatticeType::LWW);
-    vector<KeyResponse> responses = &client->receive_async();
-    while (responses.size() == 0) {
-        responses = &client->receive_async();
+    LWWValue lww_value;
+    Address responseAddress;
+    lww_value.set_timestamp(0); //ulonglong
+    lww_value.set_value("THERE"); // string
+    lww_value.set_promise(0); // ulonglong
+
+
+    string serialized;
+    lww_value.SerializeToString(&serialized);
+
+    map<Key, string> key_map;
+
+    key_map.insert(pair<Key, string>("HELLO", serialized));
+
+
+        for (auto &p : key_map) {
+                std::cout << p.first << " " << p.second << std::endl;
+        }
+
+    (&client)->writeTx(key_map);
+    //responseAddress = request.response_address();
+    vector<KeyResponse> responses = (&client)->receive_async();
+    for (KeyResponse response: responses) {
+        std::cout << "Response Id: " << response.response_id() << std::endl;
     }
 
-    KeyResponse response = responses[0];
 
-    std::cout << "Error Code: " << response.error() << "\n";
+    set<string> vec = {"HELLO"};
+    vector<KeyResponse> result;
 
 
+    (&client)->readTx(vec, 0, std::numeric_limits<unsigned long long>::max());
+    std::cout << "1" << std::endl;
+    while (result.size() == 0) {
 
-    /*if (argc == 2) {
-        run(&client);
-    } else {
-        run(&client, argv[2]);
-    }*/
+        std::cout << "1.2: before" << std::endl;
+        result = (&client)->receive_async();
+        std::cout << "1.2: after" << std::endl;
+    }
+    std::cout << "2" << std::endl;
+    std::cout << "FIRST ROUND" << std::endl;
+    unsigned long long maxCommitTimestamp = 0;
+    vector<string> secondVec{};
+    for( auto keyResponse : result){
+        for( auto tuple : keyResponse.tuples()){
+            TimestampValuePair<string> mkcl = TimestampValuePair<string>(to_multi_key_wren_payload(deserialize_multi_key_wren(tuple.payload())));
+            maxCommitTimestamp = std::max({maxCommitTimestamp,mkcl.timestamp});
+            std::cout << "{" << tuple.key() << " : "
+                    << mkcl.value << ":" << std::to_string(mkcl.timestamp) << ":" << std::to_string(keyResponse.lastseen()) << "}" << std::endl;
+            std::cout << "Max Timestamp: " << maxCommitTimestamp << std::endl;
+        }
+    }
+
 }
