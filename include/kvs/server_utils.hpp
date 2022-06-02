@@ -12,6 +12,7 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  Modifications copyright (C) 2021 Taras Lykhenko, Rafael Soares
+
 #ifndef INCLUDE_KVS_SERVER_UTILS_HPP_
 #define INCLUDE_KVS_SERVER_UTILS_HPP_
 
@@ -34,8 +35,6 @@
 // Define the gossip period (frequency)
 //#define PERIOD 10000000 // 10 seconds
 #define PERIOD 50000 // 50 miliseconds
-#define HEARTBEAT 5000 // 5 miliseconds
-#define WARMUP 5 // 50 miliseconds
 
 typedef KVStore<Key, LWWPairLattice<string>> MemoryLWWKVS;
 typedef KVStore<Key, SetLattice<string>> MemorySetKVS;
@@ -201,7 +200,7 @@ public:
         if(mkr.reveal().timestamp > t_low){
           tvp = TimestampValuePair<string>(mkr.reveal().timestamp, promise, mkr.reveal().value);
         }else{
-          tvp = TimestampValuePair<string>(mkr.reveal().timestamp, promise, mkr.reveal().value);
+          tvp = TimestampValuePair<string>(mkr.reveal().timestamp, promise, "");
         }
 
         return serialize(LWWPairLattice<string>(tvp));

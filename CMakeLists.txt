@@ -12,6 +12,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #  Modifications copyright (C) 2021 Taras Lykhenko, Rafael Soares
+
 CMAKE_MINIMUM_REQUIRED(VERSION 3.6 FATAL_ERROR)
 PROJECT(Anna)
 
@@ -98,3 +99,19 @@ LINK_DIRECTORIES(${ZEROMQ_LINK_DIRS} ${YAMLCPP_LINK_DIRS})
 
 ADD_SUBDIRECTORY(src)
 ADD_SUBDIRECTORY(client/cpp)
+
+IF(${BUILD_TEST})
+  INCLUDE(common/cmake/DownloadProject.cmake)
+  DOWNLOAD_PROJECT(PROJ                googletest
+                   GIT_REPOSITORY      https://github.com/google/googletest.git
+                   GIT_TAG             release-1.8.0
+                   UPDATE_DISCONNECTED 1
+  )
+
+  ADD_SUBDIRECTORY(${googletest_SOURCE_DIR} ${googletest_BINARY_DIR})
+
+  INCLUDE_DIRECTORIES(common/mock)
+  INCLUDE_DIRECTORIES(tests)
+  ADD_SUBDIRECTORY(common/mock)
+  ADD_SUBDIRECTORY(tests)
+ENDIF()
