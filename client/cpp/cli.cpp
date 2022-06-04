@@ -451,22 +451,23 @@ int main(int argc, char *argv[]) {
                 std::cout << p.first << " " << p.second << std::endl;
         }
 
-    (&client)->writeTx(key_map);
+    /*(&client)->writeTx(key_map);
     //responseAddress = request.response_address();
     vector<KeyResponse> responses = (&client)->receive_async();
     for (KeyResponse response: responses) {
         std::cout << "Response Id: " << response.response_id() << std::endl;
-    }
+    }*/
 
 
     set<string> vec = {"HELLO"};
     vector<KeyResponse> result;
+    map<Key, unsigned long long> t_low_map;
+        t_low_map.insert(pair<Key, unsigned long long>("HELLO", 0)); 
 
+   // (&client)->readTx({"HELLO"}, 0, std::numeric_limits<unsigned long long>::max());
+    (&client)->readSliceTx({"HELLO"}, t_low_map, std::numeric_limits<unsigned long long>::max(), 0);
 
-    (&client)->readTx(vec, 0, std::numeric_limits<unsigned long long>::max());
-    std::cout << "1" << std::endl;
     while (result.size() == 0) {
-
         std::cout << "1.2: before" << std::endl;
         result = (&client)->receive_async();
         std::cout << "1.2: after" << std::endl;
@@ -484,5 +485,5 @@ int main(int argc, char *argv[]) {
             std::cout << "Max Timestamp: " << maxCommitTimestamp << std::endl;
         }
     }
-
+    // move the yaml conf file to some place where it can be accessed while running
 }

@@ -99,19 +99,3 @@ LINK_DIRECTORIES(${ZEROMQ_LINK_DIRS} ${YAMLCPP_LINK_DIRS})
 
 ADD_SUBDIRECTORY(src)
 ADD_SUBDIRECTORY(client/cpp)
-
-IF(${BUILD_TEST})
-  INCLUDE(common/cmake/DownloadProject.cmake)
-  DOWNLOAD_PROJECT(PROJ                googletest
-                   GIT_REPOSITORY      https://github.com/google/googletest.git
-                   GIT_TAG             release-1.8.0
-                   UPDATE_DISCONNECTED 1
-  )
-
-  ADD_SUBDIRECTORY(${googletest_SOURCE_DIR} ${googletest_BINARY_DIR})
-
-  INCLUDE_DIRECTORIES(common/mock)
-  INCLUDE_DIRECTORIES(tests)
-  ADD_SUBDIRECTORY(common/mock)
-  ADD_SUBDIRECTORY(tests)
-ENDIF()
